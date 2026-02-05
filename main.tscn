@@ -1,0 +1,39 @@
+[gd_scene format=3 uid="uid://0jcpvs6xwg1h"]
+
+[ext_resource type="Script" uid="uid://hs3weje5hg17" path="res://main.gd" id="1_0xm2m"]
+[ext_resource type="Texture2D" uid="uid://4nfp6atjj34b" path="res://assets/cat.png" id="2_1bvp3"]
+[ext_resource type="Script" uid="uid://b23f2cqlc04ck" path="res://cat.gd" id="2_h2yge"]
+[ext_resource type="Texture2D" uid="uid://cvj3a5b5wo28l" path="res://assets/cat2.png" id="3_7mycd"]
+[ext_resource type="Texture2D" uid="uid://02t3kfdeffcd" path="res://assets/cat3.png" id="5_272bh"]
+[ext_resource type="Texture2D" uid="uid://ba56qck3pst3x" path="res://assets/cat4.png" id="6_5vw27"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_kek77"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("3_7mycd")
+}, {
+"duration": 1.0,
+"texture": ExtResource("2_1bvp3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("5_272bh")
+}, {
+"duration": 1.0,
+"texture": ExtResource("6_5vw27")
+}],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}]
+
+[node name="main" type="Node2D" unique_id=1799138755]
+script = ExtResource("1_0xm2m")
+
+[node name="Cat" type="CharacterBody2D" parent="." unique_id=80821034]
+scale = Vector2(3, 3)
+script = ExtResource("2_h2yge")
+
+[node name="AnimatedCat" type="AnimatedSprite2D" parent="Cat" unique_id=963558156]
+sprite_frames = SubResource("SpriteFrames_kek77")
+frame = 1
