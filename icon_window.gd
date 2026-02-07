@@ -1,12 +1,10 @@
-extends Node
-
-const ICON_SIZE = Vector2i(50, 50)
-const MENU_SIZE = Vector2i(400, 200)
+extends Window
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	pass # Replace with function body.
-
+	var usable = DisplayServer.screen_get_usable_rect()
+	position = usable.position + usable.size - Constants.ICON_SIZE
+	pass
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
