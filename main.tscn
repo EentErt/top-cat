@@ -4,6 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://4nfp6atjj34b" path="res://assets/cat.png" id="2_1bvp3"]
 [ext_resource type="Script" uid="uid://b23f2cqlc04ck" path="res://cat.gd" id="2_h2yge"]
 [ext_resource type="Texture2D" uid="uid://cvj3a5b5wo28l" path="res://assets/cat2.png" id="3_7mycd"]
+[ext_resource type="Script" uid="uid://cjoe3o331x760" path="res://cat_window.gd" id="4_074og"]
 [ext_resource type="Texture2D" uid="uid://02t3kfdeffcd" path="res://assets/cat3.png" id="5_272bh"]
 [ext_resource type="Texture2D" uid="uid://ba56qck3pst3x" path="res://assets/cat4.png" id="6_5vw27"]
 [ext_resource type="Texture2D" uid="uid://b4m05p4prtgis" path="res://assets/cat-head.png" id="7_5vw27"]
@@ -17,6 +18,14 @@
 [ext_resource type="Script" uid="uid://cml8wf7h7q0oj" path="res://SystemTray.cs" id="13_yaehf"]
 [ext_resource type="Script" uid="uid://c0pkkjy7coje4" path="res://menu_window.gd" id="16_2cqfq"]
 [ext_resource type="Texture2D" uid="uid://bubibxkmj6tg4" path="res://assets/menu.png" id="16_yaehf"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_kq58d"]
+atlas = ExtResource("12_w48qg")
+region = Rect2(0, 0, 21, 21)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_seu75"]
+atlas = ExtResource("12_w48qg")
+region = Rect2(21, 0, 21, 21)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_vivmo"]
 atlas = ExtResource("7_kek77")
@@ -206,32 +215,8 @@ animations = [{
 "speed": 5.0
 }]
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_kq58d"]
-atlas = ExtResource("12_w48qg")
-region = Rect2(0, 0, 21, 21)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_seu75"]
-atlas = ExtResource("12_w48qg")
-region = Rect2(21, 0, 21, 21)
-
 [node name="Main" type="Node2D" unique_id=1799138755]
 script = ExtResource("1_0xm2m")
-
-[node name="Cat" type="CharacterBody2D" parent="." unique_id=80821034]
-scale = Vector2(3, 3)
-script = ExtResource("2_h2yge")
-
-[node name="AnimatedCat" type="AnimatedSprite2D" parent="Cat" unique_id=963558156]
-sprite_frames = SubResource("SpriteFrames_kek77")
-animation = &"walk"
-centered = false
-script = ExtResource("9_efxa6")
-
-[node name="Head" type="AnimatedSprite2D" parent="Cat/AnimatedCat" unique_id=507583704]
-sprite_frames = SubResource("SpriteFrames_2cqfq")
-centered = false
-offset = Vector2(7, 0)
-script = ExtResource("8_kek77")
 
 [node name="TransparentWindow" type="Node" parent="." unique_id=2070118046]
 script = ExtResource("12_dg77c")
@@ -280,5 +265,30 @@ offset_bottom = 40.0
 scale = Vector2(2, 2)
 texture = ExtResource("16_yaehf")
 centered = false
+
+[node name="CatWindow" type="Window" parent="." unique_id=1461793654]
+transparent_bg = true
+canvas_item_default_texture_filter = 0
+oversampling_override = 1.0
+borderless = true
+always_on_top = true
+transparent = true
+script = ExtResource("4_074og")
+
+[node name="Cat" type="CharacterBody2D" parent="CatWindow" unique_id=80821034]
+scale = Vector2(3, 3)
+script = ExtResource("2_h2yge")
+
+[node name="AnimatedCat" type="AnimatedSprite2D" parent="CatWindow/Cat" unique_id=963558156]
+sprite_frames = SubResource("SpriteFrames_kek77")
+animation = &"walk"
+centered = false
+script = ExtResource("9_efxa6")
+
+[node name="Head" type="AnimatedSprite2D" parent="CatWindow/Cat/AnimatedCat" unique_id=507583704]
+sprite_frames = SubResource("SpriteFrames_2cqfq")
+centered = false
+offset = Vector2(7, 0)
+script = ExtResource("8_kek77")
 
 [connection signal="pressed" from="IconWindow/OpenMenuButton" to="MenuWindow" method="_on_open_menu_button_pressed"]
