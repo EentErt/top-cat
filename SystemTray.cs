@@ -4,12 +4,36 @@ using System.Runtime.InteropServices;
 
 public partial class SystemTray : Node
 {
-	// --- Window style functions ---
-	[DllImport("user32.dll")]
-	private static extern int SetWindowLong(IntPtr hWnd, int nIndex, uint dwNewLong);
+	// --- 32-bit window style functions ---
+	[DllImport("user32.dll", EntryPoint = "SetWindowLong")]
+	private static extern int SetWindowLong32(IntPtr hWnd, int nIndex, uint dwNewLong);
 
-	[DllImport("user32.dll")]
-	private static extern uint GetWindowLong(IntPtr hWnd, int nIndex);
+	[DllImport("user32.dll", EntryPoint = "GetWindowLong")]
+	private static extern uint GetWindowLong32(IntPtr hWnd, int nIndex);
+
+	// --- 64-bit window style functions ---
+	[DllImport("user32.dll", EntryPoint = "SetWindowLongPtr")]
+	private static extern IntPtr SetWindowLong64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+	[DllImport("user32.dll", EntryPoint = "GetWindowLongPtr")]
+	private static extern IntPtr GetWindowLong64(IntPtr hWnd, int nIndex);
+
+	// --- Helpers that pick the right version ---
+	private static void SetWindowStyle(IntPtr hWnd, int nIndex, uint value)
+	{
+		if (IntPtr.Size == 8)
+			SetWindowLong64(hWnd, nIndex, new IntPtr(value));
+		else
+			SetWindowLong32(hWnd, nIndex, value);
+	}
+
+	private static uint GetWindowStyle(IntPtr hWnd, int nIndex)
+	{
+		if (IntPtr.Size == 8)
+			return (uint)GetWindowLong64(hWnd, nIndex).ToInt64();
+		else
+			return GetWindowLong32(hWnd, nIndex);
+	}
 
 	// --- System tray functions ---
 	[DllImport("shell32.dll", CharSet = CharSet.Unicode)]
@@ -25,8 +49,8 @@ public partial class SystemTray : Node
 
 	// Window style constants
 	private const int GwlExStyle = -20;
-	private const int WsExToolWindow = 0x80;      // Hidden from taskbar + Alt+Tab
-	private const int WsExAppWindow = 0x40000;     // Shown in taskbar (we remove this)
+	private const uint WsExToolWindow = 0x80;
+	private const uint WsExAppWindow = 0x40000;
 
 	// Tray icon constants
 	private const uint NimAdd = 0x00000000;
@@ -53,32 +77,79 @@ public partial class SystemTray : Node
 	private IntPtr _iconHandle;
 	private NOTIFYICONDATA _notifyData;
 
-	// Set these in the Inspector or override in _Ready
 	[Export] public string TooltipText = "My Godot App";
 	[Export] public string IconFileName = "icon.ico";
 
 	public override void _Ready()
 	{
+		// Get the main window handle
 		_hWnd = (IntPtr)DisplayServer.WindowGetNativeHandle(
 			DisplayServer.HandleType.WindowHandle,
-			GetWindow().GetWindowId()
+			GetTree().Root.GetWindowId()
 		);
 
-		HideFromTaskbar();
+		// Hide main window from taskbar
+		HideFromTaskbar(_hWnd);
+
+		// Hide all sub-windows from taskbar
+		HideAllSubWindows(GetTree().Root);
+
+		// Add a single tray icon for the whole app
 		AddTrayIcon();
 	}
 
-	private void HideFromTaskbar()
+	private void HideFromTaskbar(IntPtr handle)
 	{
-		uint currentStyle = GetWindowLong(_hWnd, GwlExStyle);
-		currentStyle &= ~(uint)WsExAppWindow;   // Remove "show in taskbar"
-		currentStyle |= (uint)WsExToolWindow;    // Add "tool window" style
-		SetWindowLong(_hWnd, GwlExStyle, currentStyle);
+		uint currentStyle = GetWindowStyle(handle, GwlExStyle);
+		currentStyle &= ~WsExAppWindow;
+		currentStyle |= WsExToolWindow;
+		SetWindowStyle(handle, GwlExStyle, currentStyle);
+	}
+
+	private void HideAllSubWindows(Node node)
+	{
+		foreach (var child in node.GetChildren())
+		{
+			if (child is Window window && window != GetTree().Root)
+			{
+				CallDeferred(nameof(DeferredHideWindow), window.GetPath());
+			}
+			HideAllSubWindows(child);
+		}
+	}
+
+	private void DeferredHideWindow(NodePath path)
+	{
+		var window = GetNode<Window>(path);
+
+		if (!window.Visible)
+			window.Visible = true;
+
+		IntPtr handle = (IntPtr)DisplayServer.WindowGetNativeHandle(
+			DisplayServer.HandleType.WindowHandle,
+			window.GetWindowId()
+		);
+
+		HideFromTaskbar(handle);
+		GD.Print($"Hidden from taskbar: {window.Name}");
+	}
+
+	// Call this from GDScript if you add new windows at runtime
+	public void HideWindowFromTaskbar(Window window)
+	{
+		if (!window.Visible)
+			window.Visible = true;
+
+		IntPtr handle = (IntPtr)DisplayServer.WindowGetNativeHandle(
+			DisplayServer.HandleType.WindowHandle,
+			window.GetWindowId()
+		);
+
+		HideFromTaskbar(handle);
 	}
 
 	private void AddTrayIcon()
 	{
-		// Load .ico file from next to the executable
 		string iconPath = System.IO.Path.Combine(
 			System.IO.Path.GetDirectoryName(OS.GetExecutablePath()),
 			IconFileName
