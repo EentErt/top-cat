@@ -32,3 +32,16 @@ func nap():
 	play("nap")
 	$Head.offset = Vector2(7, 13)
 	$Head.frame = 6
+	
+func squish():
+	flip_h = false
+	play("squish")
+	frame = 17
+	$Head.offset = Vector2(7, -1)
+	$Head.look(get_global_mouse_position())
+	var mouse = get_local_mouse_position()
+	mouse.y += 15
+	var center_point = Vector2(13.0, 30.0)
+	if abs(mouse.x - center_point.x) < 15:
+		frame = int(center_point.y - mouse.y)
+		$Head.offset = Vector2(7, 16 - frame)

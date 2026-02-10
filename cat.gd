@@ -1,5 +1,7 @@
 extends CharacterBody2D
 
+var platforms = []
+
 enum MoodType { Playful, Curious, Bored, Lazy }
 enum EnergyLevel { Hyper, Active, Sleepy }
 
@@ -10,6 +12,7 @@ var mood := 50
 var speed := 0
 var mood_timer := 0.0
 var sleeping := false
+var squish := false
 
 var direction := 1
 var bounds := DisplayServer.window_get_size()
@@ -20,6 +23,7 @@ signal behavior(energy_mood)
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
+	platforms = _get_platforms()
 	self.position.x = bounds[0] / 2.0
 	self.position.y = bounds[1] - height
 
@@ -39,6 +43,10 @@ func _process(delta: float) -> void:
 # act based on mood
 func act():
 	# get action
+	if squish:
+		speed = 0
+		$AnimatedCat.squish()
+		return
 	var action = get_behavior()
 	behavior.emit([get_energy_level(), get_mood()])
 	action.call()
@@ -151,4 +159,10 @@ func nap():
 	speed = 0
 	sleeping = true
 	$AnimatedCat.nap()
+	
+func _get_platforms():
+	platforms = $WindowDetector.GetWindowPlatforms()
+	
+func _on_timer_timeout() -> void:
+	platforms = _get_platforms()
 	
