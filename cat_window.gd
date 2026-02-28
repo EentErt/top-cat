@@ -27,3 +27,4 @@ func _input(event):
 		$TransparentWindow.SetClickThrough(true)
 		$Cat.squish = false
 		Input.set_custom_mouse_cursor(null)
+	get_parent().get_node("MenuWindow").hide()

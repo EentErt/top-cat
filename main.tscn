@@ -383,7 +383,7 @@ script = ExtResource("8_kek77")
 [node name="WindowDetector" type="Node" parent="CatWindow/Cat" unique_id=1594193459]
 script = ExtResource("15_getpj")
 
-[node name="Timer" type="Timer" parent="CatWindow/Cat/WindowDetector" unique_id=783072266]
+[node name="Timer" type="Timer" parent="CatWindow/Cat" unique_id=783072266]
 wait_time = 3.0
 autostart = true
 
@@ -439,6 +439,6 @@ texture_normal = ExtResource("20_getpj")
 texture_pressed = ExtResource("20_getpj")
 texture_hover = ExtResource("20_getpj")
 
-[connection signal="timeout" from="CatWindow/Cat/WindowDetector/Timer" to="CatWindow/Cat" method="_on_timer_timeout"]
+[connection signal="timeout" from="CatWindow/Cat/Timer" to="CatWindow/Cat" method="_on_timer_timeout"]
 [connection signal="pressed" from="IconWindow/OpenMenuButton" to="MenuWindow" method="_on_open_menu_button_pressed"]
 [connection signal="pressed" from="MenuWindow/PettingIcon" to="CatWindow" method="_on_texture_button_pressed"]

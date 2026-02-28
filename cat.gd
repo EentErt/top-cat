@@ -146,6 +146,7 @@ func wander():
 	
 func sit():
 	speed = 0
+	$AnimatedCat.flip_h = false
 	$AnimatedCat.sit()
 	$AnimatedCat/Head.look(get_global_mouse_position())
 	
@@ -160,9 +161,64 @@ func nap():
 	sleeping = true
 	$AnimatedCat.nap()
 	
+func climb():
+	print("trying to climb")
+	# find a target
+	if !target:
+		# target a random point on a random platform
+		var target_platform = platforms[int(randi() % len(platforms))]
+		var target_x = target_platform["left"] + randi() % int(target_platform["right"] - target_platform["left"])
+		target = Vector2i(target_x, target_platform["y"])
+		print(target)
+		
+		# if target is too high to put cat on, ignore it and sit.
+		if target_platform.y > DisplayServer.window_get_position().y + 90:
+			print("target is too high")
+			speed = 0
+			sit()
+			return
+			
+		# make sure target is in the window
+		var left_bound = DisplayServer.window_get_position().x		
+		var right_bound = left_bound + DisplayServer.window_get_size().x
+		if target.x - left_bound < 0 or target_platform["left"] > right_bound:
+			print("target out of horizontal bounds")
+			speed = 0
+			sit()
+			return
+			
+	# "climb"
+	if position.x == target.x:
+		position.y = target.y
+		sit()
+	else:
+		wander()
+		
+	
 func _get_platforms():
-	platforms = $WindowDetector.GetWindowPlatforms()
+	var result = $WindowDetector.GetWindowPlatforms()
+	#print("result type: ", typeof(result), " value: ", result)
+	
+	if result != null:
+		platforms = result.duplicate()
+		#print("platforms count: ", len(platforms))
+	else:
+		#print("result was null")
+		platforms = []
+	#var window_pos = DisplayServer.window_get_position()
+	#var window_size = DisplayServer.window_get_size()
+	#for platform in potential_platforms:
+	#	if platform["y"] < window_pos.y + 90:
+	#		# platform is off the left side
+	#		if platform["right"] < window_pos.x:
+	#			continue
+	#		#platform is off the right side
+	#		elif platform["left"] > window_pos.x + window_size.x:
+	#			continue
+	#		if platform["left"] < window_pos.x:
+	#			platform["left"] = window_pos.x
+				
 	
 func _on_timer_timeout() -> void:
-	platforms = _get_platforms()
+	_get_platforms()
 	

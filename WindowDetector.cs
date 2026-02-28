@@ -30,10 +30,11 @@ public partial class WindowDetector : Node
 	[DllImport("user32.dll")]
 	private static extern bool IsIconic(IntPtr hWnd);
 
-	// Gets extended window styles (to filter out tool windows etc.)
+	// Gets extended window styles — 64-bit
 	[DllImport("user32.dll", EntryPoint = "GetWindowLongPtr")]
 	private static extern IntPtr GetWindowLong64(IntPtr hWnd, int nIndex);
 
+	// Gets extended window styles — 32-bit
 	[DllImport("user32.dll", EntryPoint = "GetWindowLong")]
 	private static extern uint GetWindowLong32(IntPtr hWnd, int nIndex);
 
@@ -50,23 +51,22 @@ public partial class WindowDetector : Node
 		public int Bottom;
 	}
 
-	// Godot-friendly window info that we pass back to GDScript
-	public class WindowInfo
-	{
-		public string Title;
-		public Vector2 Position;   // Top-left corner (screen coords)
-		public Vector2 Size;       // Width x Height
-	}
-
 	private const int GwlExStyle = -20;
 	private const uint WsExToolWindow = 0x80;
 
 	// Store our own window handles so we can exclude them
 	private HashSet<IntPtr> _ownHandles = new HashSet<IntPtr>();
 
+	private static uint GetWindowStyle(IntPtr hWnd, int nIndex)
+	{
+		if (IntPtr.Size == 8)
+			return (uint)GetWindowLong64(hWnd, nIndex).ToInt64();
+		else
+			return GetWindowLong32(hWnd, nIndex);
+	}
+
 	public override void _Ready()
 	{
-		// Collect all Godot window handles so we skip them
 		CacheOwnWindows();
 	}
 
@@ -101,109 +101,95 @@ public partial class WindowDetector : Node
 		}
 	}
 
-	private static uint GetWindowStyle(IntPtr hWnd, int nIndex)
+	// Returns all visible windows as an array of dictionaries
+	public Godot.Collections.Array GetVisibleWindows()
 	{
-		if (IntPtr.Size == 8)
-			return (uint)GetWindowLong64(hWnd, nIndex).ToInt64();
-		else
-			return GetWindowLong32(hWnd, nIndex);
-	}
-
-	// Call this from GDScript to get all visible window rects
-	public Godot.Collections.Array<Godot.Collections.Dictionary> GetVisibleWindows()
-	{
-		// Refresh our own window handles in case new ones were added
 		CacheOwnWindows();
 
-		var results = new List<WindowInfo>();
+		var results = new Godot.Collections.Array();
 
 		EnumWindows((hWnd, lParam) =>
 		{
-			// Skip our own windows
-			if (_ownHandles.Contains(hWnd))
-				return true;
+			if (_ownHandles.Contains(hWnd)) return true;
+			if (!IsWindowVisible(hWnd)) return true;
+			if (IsIconic(hWnd)) return true;
 
-			// Skip invisible windows
-			if (!IsWindowVisible(hWnd))
-				return true;
-
-			// Skip minimized windows
-			if (IsIconic(hWnd))
-				return true;
-
-			// Skip windows with no title (usually system stuff)
 			int titleLength = GetWindowTextLength(hWnd);
-			if (titleLength == 0)
-				return true;
+			if (titleLength == 0) return true;
 
-			// Skip tool windows (tooltips, popups, etc.)
 			uint exStyle = GetWindowStyle(hWnd, GwlExStyle);
-			if ((exStyle & WsExToolWindow) != 0)
-				return true;
+			if ((exStyle & WsExToolWindow) != 0) return true;
 
-			// Get the window rectangle
 			if (GetWindowRect(hWnd, out RECT rect))
 			{
-				// Skip zero-size windows
 				int width = rect.Right - rect.Left;
 				int height = rect.Bottom - rect.Top;
-				if (width <= 0 || height <= 0)
-					return true;
+				if (width <= 0 || height <= 0) return true;
 
-				// Get the title
 				StringBuilder titleBuilder = new StringBuilder(titleLength + 1);
 				GetWindowText(hWnd, titleBuilder, titleBuilder.Capacity);
 
-				results.Add(new WindowInfo
+				results.Add(new Godot.Collections.Dictionary
 				{
-					Title = titleBuilder.ToString(),
-					Position = new Vector2(rect.Left, rect.Top),
-					Size = new Vector2(width, height)
+					{ "title", titleBuilder.ToString() },
+					{ "position", new Vector2(rect.Left, rect.Top) },
+					{ "size", new Vector2(width, height) },
+					{ "top_edge", (float)rect.Top },
+					{ "left_edge", (float)rect.Left },
+					{ "right_edge", (float)rect.Right },
+					{ "bottom_edge", (float)rect.Bottom }
 				});
 			}
 
-			return true; // continue enumerating
+			return true;
 		}, IntPtr.Zero);
 
-		// Convert to Godot Array of Dictionaries so GDScript can use it
-		var godotArray = new Godot.Collections.Array<Godot.Collections.Dictionary>();
-		foreach (var info in results)
-		{
-			var dict = new Godot.Collections.Dictionary
-			{
-				{ "title", info.Title },
-				{ "position", info.Position },
-				{ "size", info.Size },
-				// Top edge of the window — useful for "standing on" a window
-				{ "top_edge", info.Position.Y },
-				// Left and right edges — useful for climbing sides
-				{ "left_edge", info.Position.X },
-				{ "right_edge", info.Position.X + info.Size.X }
-			};
-			godotArray.Add(dict);
-		}
-
-		return godotArray;
+		GD.Print($"GetVisibleWindows found {results.Count} windows");
+		return results;
 	}
 
-	// Convenience: get just the top edges as platforms the cat can stand on
-	public Godot.Collections.Array<Godot.Collections.Dictionary> GetWindowPlatforms()
+	// Returns just the platform data for the cat to stand on
+	public Godot.Collections.Array GetWindowPlatforms()
 	{
-		var windows = GetVisibleWindows();
-		var platforms = new Godot.Collections.Array<Godot.Collections.Dictionary>();
+		CacheOwnWindows();
 
-		foreach (var window in windows)
+		var platforms = new Godot.Collections.Array();
+
+		EnumWindows((hWnd, lParam) =>
 		{
-			platforms.Add(new Godot.Collections.Dictionary
-			{
-				{ "title", window["title"] },
-				// A platform is the top edge of the window, spanning its full width
-				{ "left", (float)window["left_edge"] },
-				{ "right", (float)window["right_edge"] },
-				{ "y", (float)window["top_edge"] }
-			});
-		}
+			if (_ownHandles.Contains(hWnd)) return true;
+			if (!IsWindowVisible(hWnd)) return true;
+			if (IsIconic(hWnd)) return true;
 
+			int titleLength = GetWindowTextLength(hWnd);
+			if (titleLength == 0) return true;
+
+			uint exStyle = GetWindowStyle(hWnd, GwlExStyle);
+			if ((exStyle & WsExToolWindow) != 0) return true;
+
+			if (GetWindowRect(hWnd, out RECT rect))
+			{
+				int width = rect.Right - rect.Left;
+				int height = rect.Bottom - rect.Top;
+				if (width <= 0 || height <= 0) return true;
+
+				StringBuilder titleBuilder = new StringBuilder(titleLength + 1);
+				GetWindowText(hWnd, titleBuilder, titleBuilder.Capacity);
+
+				platforms.Add(new Godot.Collections.Dictionary
+				{
+					{ "title", titleBuilder.ToString() },
+					{ "left", (float)rect.Left },
+					{ "right", (float)rect.Right },
+					{ "y", (float)rect.Top },
+					{ "bottom", (float)rect.Bottom }
+				});
+			}
+
+			return true;
+		}, IntPtr.Zero);
+
+		// GD.Print($"GetWindowPlatforms found {platforms.Count} platforms");
 		return platforms;
 	}
 }
